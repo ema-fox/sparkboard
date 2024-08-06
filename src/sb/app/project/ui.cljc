@@ -9,6 +9,7 @@
             [sb.app.project.data :as data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.authorize :as az]
             [sb.color :as color]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
@@ -103,9 +104,10 @@
   ;; 4. hover to see member details
   ;; 5. fix chat
   [:div.field-wrapper
+   [ui/pprinted (mapv deref (:membership/_entity project))]
    [:div.field-label (t :tr/team)]
    [:div.grid.grid-cols-2.gap-6
-    (for [member (->> (:membership/_entity project)
+    (u/for! [member (->> (:membership/_entity project)
                       (sort-by u/compare:desc :entity/created-at))
           :let [board-membership (-> member :membership/member)
                 {:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
@@ -120,8 +122,17 @@
            [:div.tag-sm {:style (color/color-pair color)}
             label])]]])]
    (when ((some-fn :role/project-admin :role/board-admin) (:membership/roles props))
-     [entity.ui/persisted-attr project :entity/admission-policy props])]
-  )
+     [entity.ui/persisted-attr project :entity/admission-policy props])
+   (if (some-> (db/get :env/config :account)
+               (az/membership-id (:entity/parent project))
+               (az/membership-id project))
+     [ui/action-button
+      {:on-click (fn [_] (data/leave! {:project-id (sch/unwrap-id project)}))}
+      "leave"]
+     ;; TODO check admission policy
+     [ui/action-button
+      {:on-click (fn [_] (data/join! {:project-id (sch/unwrap-id project)}))}
+      "join"])])
 
 (ui/defview show
   {:route       "/p/:project-id"

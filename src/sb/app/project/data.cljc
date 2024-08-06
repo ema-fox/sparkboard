@@ -130,6 +130,7 @@
                                                            (az/membership-id account-id (:entity/parent project))
                                                            #{:role/project-admin})]
     (validate/assert project :project/as-map)
+    (validate/assert (update membership :membership/entity sch/wrap-id) :membership/as-map)
     (db/transact! [membership])
     {:entity/id (:entity/id project)}))
 
@@ -139,3 +140,38 @@
   ;; TODO: auth
   (db/transact! [[:db/add [:entity/id project-id] :entity/deleted-at (java.util.Date.)]])
   {:body ""})
+
+
+(q/defx join!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id project-id]}]
+  ;; TODO verify that is user is allowed to join project
+  (let [membership (member.data/new-entity-with-membership (sch/wrap-id project-id)
+                                                           (az/membership-id account-id (:entity/parent (dl/entity project-id)))
+                                                           #{})]
+    (validate/assert membership :membership/as-map)
+    (doto (db/transact! [membership])
+      #_clojure.pprint/pprint)
+    {:body ""}))
+
+(q/defx leave!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id project-id]}]
+  ;; TODO change not synced to client
+  (if-let [member-id (-> account-id
+                         (az/membership-id (:entity/parent (dl/entity (sch/wrap-id project-id))))
+                         (az/membership-id project-id)
+                         sch/wrap-id)]
+    (do
+      (prn ::aa (into {} (dl/entity member-id)))
+      #_(doto (db/transact! [[:db.fn/retractEntity member-id]
+                           #_[:db/add member-id :membership/roles :bar]
+                           #_[:db/retract member-id :membership/member #_nil]])
+        clojure.pprint/pprint)
+      (prn ::bb (into {} (dl/entity member-id)))
+      {#_#_ :body ""
+         :txs [[:db/retractEntity member-id]
+               #_[:db/add member-id :membership/entity :foo]
+               #_[:db/retract member-id :membership/member #_nil]]
+         })
+    {:body ""}))

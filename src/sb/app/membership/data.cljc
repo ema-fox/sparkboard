@@ -69,6 +69,7 @@
                                              (? :entity/updated-at)
 
                                              (? :entity/field-entries)
+                                             ;; TODO Currently not really used, if used needs to be accounted for in many queries
                                              (? :entity/deleted-at)
                                              (? :entity/modified-by)]}})
 
