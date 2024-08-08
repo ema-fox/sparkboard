@@ -280,7 +280,7 @@
 
                                           :style {:z-index 1}}))
         [:el.hidden popover/Trigger]
-        [:el popover/Anchor anchor]
+        [:el popover/Anchor {:as-child true} anchor]
         [:div {:class (when-not content
                         "hidden")}
          [:el.outline-none popover/Content {:class (:content classes)}
