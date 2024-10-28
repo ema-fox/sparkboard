@@ -794,10 +794,12 @@
                                        "boardTemplate" (uuid-ref-as :board :org/default-board-template)
                                        "socialFeed" (rename :entity/social-feed)]
               :slack.user/as-map      [::prepare (partial flat-map :slack.user/id identity)
+                                       ::always (add-kind :slack.user)
                                        "account-id" (rename :slack.user/firebase-account-id)
                                        "team-id" (& (xf (partial vector :slack.team/id))
                                                     (rename :slack.user/slack.team))]
               :slack.team/as-map      [::prepare (partial flat-map :slack.team/id identity)
+                                       ::always (add-kind :slack.team)
                                        "board-id" (uuid-ref-as :board :slack.team/board)
                                        "team-id" (rename :slack.team/id)
                                        "team-name" (rename :slack.team/name)
@@ -815,8 +817,10 @@
 
               ;; response => destination-thread where team-responses are collected
               ;; reply    => team-thread where the message with "Reply" button shows up
-              :slack.broadcast/as-map [::prepare (partial flat-map :slack.broadcast/id identity)
-                                       "replies" (& (xf (comp (partial change-keys ["message" (rename :slack.broadcast.reply/text)
+              :slack.broadcast/as-map [::prepare (partial flat-map :slack.broadcast/id #(do (prn ::bb %) %) #_identity)
+                                       ::always (add-kind :slack.broadcast)
+                                       "replies" (& (xf (comp (partial change-keys [::always (add-kind :slack.broadcast.reply)
+                                                                                    "message" (rename :slack.broadcast.reply/text)
                                                                                     "user-id" (& (xf (partial vector :slack.user/id))
                                                                                                  (rename :slack.broadcast.reply/slack.user))
                                                                                     "channel-id" (rename :slack.broadcast.reply/channel-id)
@@ -831,6 +835,7 @@
                                        "response-thread" (rename :slack.broadcast/response-thread-id)
                                        ]
               :slack.channel/as-map   [::prepare (partial flat-map :slack.channel/id identity)
+                                       ::always (add-kind :slack.channel)
                                        "project-id" (uuid-ref-as :project :slack.channel/project)
                                        ::always (remove-when (comp (partial missing-entity? :project/as-map) :slack.channel/project))
                                        "team-id" (& (xf (partial vector :slack.team/id))
@@ -1456,6 +1461,14 @@
        distinct)
   (parse-sparkboard-id "sparkboard_user:ORqqqQ1zcFPAtWYIB4QBWlkc4Kp1")
   (coll-entities :account/as-map)
+
+  (-> (coll-entities :slack.broadcast/as-map)
+       #_first
+       #_(take 5)
+       #_(map :slack.broadcast/id)
+       (u/index-by :slack.broadcast/id)
+       #_distinct)
+
 
 
   ;; misc
