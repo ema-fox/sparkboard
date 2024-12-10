@@ -11,7 +11,7 @@
             [net.cgrand.xforms :as xf])
   (:import [java.time Duration Instant]))
 
-(def GATHERING-DURATION-MINUTES 5)
+(def GATHERING-DURATION-MINUTES 1)
 
 (defn new-post [{{author :entity/created-by :post/keys [text parent]} :notification/subject}]
   (if (= :post (:entity/kind parent))

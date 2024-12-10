@@ -25,7 +25,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Password authentication using the Firebase SCRYPT hashing algorithm
 
-(def hash-config (:password-auth/hash-config (cond-> env/config
+(def hash-config (:password-auth/hash-config env/config #_(cond-> env/config
                                                      (not (= "staging" (:env env/config)))
                                                      :prod)))
 
@@ -299,6 +299,45 @@
     (send-email-verification! account))
   (-> {:body ""}
       (res:login [:account/email email])))
+
+(defn reset-password!
+  {:endpoint {:get "/reset-password/:token"}
+   :endpoint/public? true}
+  [_ params]
+  (if-let [token (parse-uuid (:token params))]
+    (if-let [account (dl/entity [:account/password-reset-token token])]
+      (if (< (.getTime (java.util.Date.))
+             (.getTime (:account/password-reset-token.expires-at account)))
+        (res:login (ring.response/redirect (routing/path-for 'sb.app.account.ui/settings))
+                   [:account/email (:account/email account)])
+        #_(let [account-id (:db/id account)]
+          (db/transact! [[:db/add account-id :account/email-verified? true]
+                         [:db/retract account-id :account/email-verification-token]
+                         [:db/retract account-id :account/email-verification-token.expires-at]])
+          (ring.response/response "Email successfully verified!"))
+        (az/unauthorized! "Verification token has expired"))
+      (az/unauthorized! "Unknown or expired verification token"))
+    (az/unauthorized! "Not a valid  verification token")))
+
+(defn send-password-reset-email!
+  {:endpoint {:post "/send-password-reset-email"}
+   :endpoint/public? true}
+  [_ {{{:account/keys [email]} :account} :body}]
+  (if-let [account (dl/entity [:account/email email])]
+    (if (:account/email-verified? account)
+      (let [token (random-uuid)]
+        (db/transact! [{:db/id (:db/id account)
+                        :account/password-reset-token token
+                        :account/password-reset-token.expires-at
+                        (java.util.Date/from (.plus (java.time.Instant/now)
+                                                    (java.time.Duration/ofHours 2)))}])
+        (email/send-to-account! {:account account
+                                 :subject (t :tr/password-reset)
+                                 :body (t :tr/password-reset-template
+                                          [(str (env/config :link-prefix)
+                                                (routing/path-for [`reset-password! {:token token}]))])})
+        )))
+  {:body ""})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Middleware
