@@ -1,6 +1,7 @@
 (ns sb.server.email
   (:require [cognitect.aws.client.api :as aws]
             [cognitect.aws.credentials :as credentials]
+            [sb.i18n :as i :refer [t]]
             [sb.server.env :as env]))
 
 (def ses (aws/client {:api :email
