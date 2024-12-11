@@ -331,8 +331,9 @@
                                  :subject (t :tr/password-reset)
                                  :body (t :tr/password-reset-template
                                           [(str (env/config :link-prefix)
-                                                (routing/path-for [`reset-password! {:token token}]))])})
-        )))
+                                                (routing/path-for [`reset-password! {:token token}]))])}))
+      (az/unauthorized! "Email not verified"))
+    (az/unauthorized! "Unkown email"))
   {:body ""})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
